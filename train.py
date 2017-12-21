@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 from ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import classification_report, precision_score, recall_score, accuracy_score, f1_score
+import matplotlib.pyplot as plt
 
 def load_img_and_get_feature(filename):
     img = Image.open(filename).convert('L').resize((24, 24), Image.LANCZOS)
@@ -84,37 +85,69 @@ def preprocessData(data_size = 1000, test_size = 0.25):
     return X_train, X_val, y_train, y_val
 
 
+def get_score_of_models(X_train,X_val,y_train,y_val,n_weakers_limit = 25):
+    scores = {
+        'train':{
+            'accuracy':[],
+            'precision':[],
+            'recall':[],
+            'f1':[]
+        },
+        'val':{
+            'accuracy':[],
+            'precision':[],
+            'recall':[],
+            'f1':[]
+        }}
+    for i in range(n_weakers_limit):
+        ada = AdaBoostClassifier.load('model_%d.pickle' % i)
+        y_predict_train = ada.predict(X_train)
+        y_predict = ada.predict(X_val)
+
+        scores['train']['accuracy'].append(accuracy_score(y_train,y_predict_train))
+        scores['train']['precision'].append(precision_score(y_train,y_predict_train))
+        scores['train']['recall'].append(recall_score(y_train,y_predict_train))
+        scores['train']['f1'].append(f1_score(y_train,y_predict_train))
+
+        scores['val']['accuracy'].append(accuracy_score(y_val,y_predict))
+        scores['val']['precision'].append(precision_score(y_val,y_predict))
+        scores['val']['recall'].append(recall_score(y_val,y_predict))
+        scores['val']['f1'].append(f1_score(y_val,y_predict))
+
+        print(i, accuracy_score(y_train,y_predict_train), accuracy_score(y_val,y_predict), '\t',
+        precision_score(y_train,y_predict_train), precision_score(y_val,y_predict),'\t',
+        recall_score(y_train,y_predict_train), recall_score(y_val,y_predict),'\t',
+        f1_score(y_train,y_predict_train), f1_score(y_val,y_predict))
+    
+    with open('scores.pickle', "wb") as f:
+        pickle.dump(scores, f)
+
+def plot_scores():
+    with open('scores.pickle', 'rb') as f:
+        scores = pickle.load(f)
+    
+    plt.plot(scores['train']['accuracy'],marker = 'x',label = 'training set')
+    plt.plot(scores['val']['accuracy'],marker = '.',label = 'validation set')
+    plt.legend()
+    plt.xlabel('iterations')
+    plt.ylabel('accuracy')
+    plt.title('AdaBoost Performance on Training Set and Validation Set')
+    plt.show()
+    # plt.savefig('report/adaboost_accuracy.eps',format='eps',dpi=1000)
+    
+
 if __name__ == "__main__":
     prepareFeature()
     X_train, X_val, y_train, y_val = preprocessData()
 
-    # adaBoost = AdaBoostClassifier(weak_classifier = DecisionTreeClassifier, n_weakers_limit = 20)
-    # adaBoost.fit(X_train,y_train)
+    adaBoost = AdaBoostClassifier(weak_classifier = DecisionTreeClassifier, n_weakers_limit = 25)
+    adaBoost.fit(X_train,y_train,save_model=True)
 
-    # # AdaBoostClassifier.save(adaBoost, )
+    # get_score_of_models(X_train, X_val, y_train, y_val)
+    # plot_scores()
 
-    # # adaBoost = AdaBoostClassifier.load('model_1.pickle')
-    # y_predict = adaBoost.predict(X_test)
+    adaBoost = AdaBoostClassifier.load('model_14.pickle')
+    y_predict = adaBoost.predict(X_val)
     
-    # print("acc", np.sum(y_predict==y_test)/y_predict.shape[0])
-    # print(classification_report(y_test,y_predict, target_names = ('nonface', 'face')))
-
-
-    ada = AdaBoostClassifier.load('model_19.pickle')
-    y_predict = ada.predict(X_val)
+    # print("acc", np.sum(y_predict==y_val)/y_predict.shape[0])
     print(classification_report(y_val,y_predict, target_names = ('nonface', 'face')))
-
-    # for i in range(20):
-    #     ada = AdaBoostClassifier.load('model_%d.pickle' % i)
-    #     y_predict_train = ada.predict(X_train)
-    #     y_predict = ada.predict(X_val)
-    #     print(i, accuracy_score(y_train,y_predict_train), accuracy_score(y_val,y_predict), '\t',
-    #     precision_score(y_train,y_predict_train), precision_score(y_val,y_predict),'\t',
-    #     recall_score(y_train,y_predict_train), recall_score(y_val,y_predict),'\t',
-    #     f1_score(y_train,y_predict_train), f1_score(y_val,y_predict)
-
-    #     )
-        # precision_score, recall_score, accuracy_score
-
-        # precision_score, recall_score, accuracy_score, f1_score
-    pass

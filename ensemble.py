@@ -24,12 +24,13 @@ class AdaBoostClassifier:
         '''Optional'''
         pass
 
-    def fit(self,X,y):
+    def fit(self,X,y,save_model=False):
         '''Build a boosted classifier from the training set (X, y).
 
         Args:
             X: An ndarray indicating the samples to be trained, which shape should be (n_samples,n_features).
             y: An ndarray indicating the ground-truth labels correspond to X, which shape should be (n_samples,1).
+            save_model: Whether save model in every iterations.
         '''
 
         self.alpha = np.array([])
@@ -57,8 +58,9 @@ class AdaBoostClassifier:
             self.alpha = np.append(self.alpha,alpha)
             self.n_weakers+=1
             self.weak_classifier_list.append(dtclf)
-
-            AdaBoostClassifier.save(self,'model_%d.pickle'%m)
+            
+            if save_model:
+                AdaBoostClassifier.save(self,'model_%d.pickle'%m)
 
         # self.alpha = np.asarray(self.alpha).reshape(-1,1)
         
