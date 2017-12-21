@@ -39,41 +39,56 @@ def prepareFeature():
                 y_t*=-1
             X_list.append(imagefeature)
             y_list.append(y_t)
-        X = np.concatenate(X_list)
-        y = np.concatenate(y_list)
 
         with open('feature.pickle', "wb") as f:
-            pickle.dump((X, y), f)
+            pickle.dump((X_list[0], y_list[0], X_list[1], y_list[1]), f)
 
-def preprocessData():
+def preprocessData(data_size = 1000, test_size = 0.25):
     if os.path.exists('train_val_data.pickle'):
         print('Fount train_val_data')
         with open('train_val_data.pickle','rb') as f:
-            X_train, X_test, y_train, y_test = pickle.load(f)
+            X_train, X_val, y_train, y_val = pickle.load(f)
     else:
         print('trian_val_data not found. Generating...')
 
         with open('feature.pickle', 'rb') as f:
-            X, y = pickle.load(f)
+            X_nonface, y_nonface, X_face, y_face = pickle.load(f)
         
-        idx = np.random.choice(X.shape[0], 1000, replace=False)
 
-        X = X[idx,:]
-        y = y[idx,:]
+        idx_nonface = np.random.choice(X_nonface.shape[0],data_size//2,replace=False)
+        X_nonface = X_nonface[idx_nonface,:]
+        y_nonface = y_nonface[idx_nonface,:]
+        X_train_nonface, X_val_nonface, y_train_nonface, y_val_nonface = train_test_split(X_nonface,y_nonface,test_size = test_size)
 
-        X_train, X_test, y_train, y_test = train_test_split(X,y,test_size = 0.2)
+        idx_face = np.random.choice(X_face.shape[0], data_size//2, replace=False)
+        X_face = X_face[idx_face,:]
+        y_face = y_face[idx_face,:]
+        X_train_face, X_val_face, y_train_face, y_val_face = train_test_split(X_face,y_face,test_size = test_size)
         
+        
+        X_train = np.concatenate([X_train_nonface,X_train_face])
+        y_train = np.concatenate([y_train_nonface,y_train_face])
+        idx_train = np.random.permutation(X_train.shape[0])
+        X_train = X_train[idx_train,:]
+        y_train = y_train[idx_train,:]
+
+        X_val = np.concatenate([X_val_nonface,X_val_face])
+        y_val = np.concatenate([y_val_nonface,y_val_face])
+        idx_val = np.random.permutation(X_val.shape[0])
+        X_val = X_val[idx_val,:]
+        y_val = y_val[idx_val,:]
+
         with open('train_val_data.pickle','wb') as f:
-            pickle.dump((X_train, X_test, y_train, y_test),f)
+            pickle.dump((X_train, X_val, y_train, y_val),f)
 
-    return X_train, X_test, y_train, y_test
+    return X_train, X_val, y_train, y_val
 
 
 if __name__ == "__main__":
     prepareFeature()
-    X_train, X_test, y_train, y_test = preprocessData()
+    X_train, X_val, y_train, y_val = preprocessData()
 
-    # adaBoost = AdaBoostClassifier(weak_classifier = DecisionTreeClassifier, n_weakers_limit = 100)
+    # adaBoost = AdaBoostClassifier(weak_classifier = DecisionTreeClassifier, n_weakers_limit = 20)
     # adaBoost.fit(X_train,y_train)
 
     # # AdaBoostClassifier.save(adaBoost, )
@@ -84,16 +99,21 @@ if __name__ == "__main__":
     # print("acc", np.sum(y_predict==y_test)/y_predict.shape[0])
     # print(classification_report(y_test,y_predict, target_names = ('nonface', 'face')))
 
-    for i in range(100):
-        ada = AdaBoostClassifier.load('model_%d.pickle' % i)
-        y_predict_train = ada.predict(X_train)
-        y_predict = ada.predict(X_test)
-        print(i, accuracy_score(y_train,y_predict_train), accuracy_score(y_test,y_predict), '\t',
-        precision_score(y_train,y_predict_train), precision_score(y_test,y_predict),'\t',
-        recall_score(y_train,y_predict_train), recall_score(y_test,y_predict),'\t',
-        f1_score(y_train,y_predict_train), f1_score(y_test,y_predict)
 
-        )
+    ada = AdaBoostClassifier.load('model_19.pickle')
+    y_predict = ada.predict(X_val)
+    print(classification_report(y_val,y_predict, target_names = ('nonface', 'face')))
+
+    # for i in range(20):
+    #     ada = AdaBoostClassifier.load('model_%d.pickle' % i)
+    #     y_predict_train = ada.predict(X_train)
+    #     y_predict = ada.predict(X_val)
+    #     print(i, accuracy_score(y_train,y_predict_train), accuracy_score(y_val,y_predict), '\t',
+    #     precision_score(y_train,y_predict_train), precision_score(y_val,y_predict),'\t',
+    #     recall_score(y_train,y_predict_train), recall_score(y_val,y_predict),'\t',
+    #     f1_score(y_train,y_predict_train), f1_score(y_val,y_predict)
+
+    #     )
         # precision_score, recall_score, accuracy_score
 
         # precision_score, recall_score, accuracy_score, f1_score
